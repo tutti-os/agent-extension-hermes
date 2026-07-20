@@ -1,0 +1,7 @@
+{
+  "agent.name": "Hermes Agent",
+  "agent.description": "Hermes Agent through the standard Agent Client Protocol",
+  "runtime.install.title": "Install the managed Hermes Agent runtime",
+  "runtime.install.description": "Installs the pinned runtime in Tutti's target-scoped managed directory without changing your project.",
+  "runtime.authRequired": "Configure Hermes credentials on the host before starting an ACP session."
+}

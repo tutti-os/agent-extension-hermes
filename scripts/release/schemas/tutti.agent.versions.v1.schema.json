@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tutti.app/schemas/tutti.agent.versions.v1.schema.json",
+  "title": "Tutti Agent Extension Versions v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "agentKey", "versions"],
+  "properties": {
+    "schemaVersion": { "const": "tutti.agent.versions.v1" },
+    "agentKey": { "type": "string" },
+    "versions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "minTuttiVersion",
+          "requiredHostCapabilities",
+          "status",
+          "release"
+        ],
+        "properties": {
+          "version": { "type": "string" },
+          "minTuttiVersion": { "type": "string" },
+          "requiredHostCapabilities": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "status": { "enum": ["active", "withdrawn"] },
+          "release": { "$ref": "tutti.agent.release.v1.schema.json" }
+        }
+      }
+    }
+  }
+}

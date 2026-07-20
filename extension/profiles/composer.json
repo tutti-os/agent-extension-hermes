@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "tutti.agent.composer.v1",
+  "model": { "source": "acp-session-models" },
+  "permission": { "source": "acp-session-modes" },
+  "permissionModes": [{
+    "runtimeId": "dont_ask",
+    "semantic": "full-access",
+    "automaticDecision": "approved"
+  }],
+  "skills": {
+    "invocation": "textTrigger",
+    "triggerPrefix": "/",
+    "roots": [
+      { "scope": "workspace", "path": ".agent_context/skills" },
+      { "scope": "user", "path": ".agent_context/skills" }
+    ]
+  }
+}

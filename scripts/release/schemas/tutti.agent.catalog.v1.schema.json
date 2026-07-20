@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tutti.app/schemas/tutti.agent.catalog.v1.schema.json",
+  "title": "Tutti Agent Extension Catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "agents"],
+  "properties": {
+    "schemaVersion": { "const": "tutti.agent.catalog.v1" },
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["agentKey", "versionsUrl", "versions"],
+        "properties": {
+          "agentKey": { "type": "string" },
+          "versionsUrl": { "type": "string", "format": "uri" },
+          "versions": { "type": "array" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tutti.app/schemas/tutti.agent.release.v1.schema.json",
+  "title": "Tutti Agent Extension Release v1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "agentKey",
+    "version",
+    "manifest",
+    "artifactUrl",
+    "artifactSha256",
+    "artifactSizeBytes",
+    "publishedAt",
+    "signature"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "tutti.agent.release.v1" },
+    "agentKey": { "type": "string" },
+    "version": { "type": "string" },
+    "manifest": { "$ref": "tutti.agent.manifest.v2.schema.json" },
+    "artifactUrl": { "type": "string", "format": "uri" },
+    "artifactSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "artifactSizeBytes": { "type": "integer", "minimum": 1 },
+    "publishedAt": { "type": "string", "format": "date-time" },
+    "gitSha": { "type": "string" },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "keyId", "value"],
+      "properties": {
+        "algorithm": { "const": "ed25519" },
+        "keyId": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

@@ -1,0 +1,246 @@
+name: Publish Agent Extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Immutable extension version
+        required: true
+        default: "1.0.0"
+      min_tutti_version:
+        description: Oldest verified Tutti version that accepts this package contract
+        required: true
+        default: "0.0.0"
+      withdraw_versions:
+        description: Comma-separated historical extension versions to mark withdrawn in versions.json
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  AGENT_KEY: hermes
+  MIN_TUTTI_VERSION: ${{ inputs.min_tutti_version }}
+  SIGNING_KEY_ID: tutti-hermes-release-v1
+  S3_PREFIX: tutti-agent-releases
+  RELEASE_ASSETS_BASE_URL: https://d1x7gb6wqsqmnm.cloudfront.net/tutti-agent-releases
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: tutti-agent-extension-${{ vars.TUTTI_AGENT_RELEASES_S3_BUCKET }}-hermes
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+        with:
+          version: 10.11.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run repository checks
+        run: pnpm check
+
+      - name: Build extension package
+        env:
+          TUTTI_AGENT_EXTENSION_VERSION: ${{ inputs.version }}
+        run: pnpm package:tutti-agent
+
+      - name: Validate extension package
+        run: python3 scripts/validate_agent_extension.py build/tutti-agent/package
+
+      - name: Build signed immutable release
+        env:
+          TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY: ${{ secrets.TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY }}
+        run: |
+          published_at="$(git show -s --format=%cI HEAD)"
+          node scripts/release/bin/build-tutti-agent-extension-release.mjs \
+            --agent-key "${AGENT_KEY}" \
+            --package-dir build/tutti-agent/package \
+            --output-dir dist/tutti-agent-extension-release \
+            --version "${{ inputs.version }}" \
+            --published-at "${published_at}" \
+            --git-sha "${GITHUB_SHA}" \
+            --base-url "${RELEASE_ASSETS_BASE_URL}" \
+            --signing-key-id "${SIGNING_KEY_ID}"
+          node -e '
+            const { createPrivateKey, createPublicKey } = require("node:crypto");
+            const { writeFileSync } = require("node:fs");
+            const privateKey = createPrivateKey(
+              process.env.TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY.replace(/\\n/g, "\n")
+            );
+            const publicKey = createPublicKey(privateKey).export({ type: "spki", format: "pem" });
+            writeFileSync(process.argv[1], publicKey, { mode: 0o600 });
+          ' "${RUNNER_TEMP}/hermes-release-public.pem"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
+        with:
+          role-to-assume: ${{ vars.TUTTI_AGENT_RELEASES_AWS_ROLE_ARN }}
+          aws-region: ${{ vars.TUTTI_AGENT_RELEASES_AWS_REGION }}
+
+      - name: Publish immutable release
+        env:
+          BUCKET: ${{ vars.TUTTI_AGENT_RELEASES_S3_BUCKET }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          local_dir="dist/tutti-agent-extension-release/agents/${AGENT_KEY}/${VERSION}"
+          remote_prefix="${S3_PREFIX:+${S3_PREFIX}/}agents/${AGENT_KEY}/${VERSION}"
+          for name in "${AGENT_KEY}-${VERSION}.zip" release.json; do
+            key="${remote_prefix}/${name}"
+            if aws s3api head-object --bucket "${BUCKET}" --key "${key}" >/dev/null 2>&1; then
+              aws s3api get-object --bucket "${BUCKET}" --key "${key}" "/tmp/${name}" >/dev/null
+              cmp "${local_dir}/${name}" "/tmp/${name}" || {
+                echo "Immutable object s3://${BUCKET}/${key} already exists with different content." >&2
+                exit 1
+              }
+            else
+              content_type="application/json"
+              if [[ "${name}" == *.zip ]]; then content_type="application/zip"; fi
+              aws s3api put-object \
+                --bucket "${BUCKET}" \
+                --key "${key}" \
+                --body "${local_dir}/${name}" \
+                --content-type "${content_type}" \
+                --cache-control "public,max-age=31536000,immutable" \
+                --if-none-match '*' >/dev/null
+            fi
+          done
+
+      - name: Update versions and latest metadata
+        env:
+          BUCKET: ${{ vars.TUTTI_AGENT_RELEASES_S3_BUCKET }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          root="dist/tutti-agent-extension-release/agents/${AGENT_KEY}"
+          release_file="${root}/${VERSION}/release.json"
+          versions_key="${S3_PREFIX:+${S3_PREFIX}/}agents/${AGENT_KEY}/versions.json"
+          latest_key="${S3_PREFIX:+${S3_PREFIX}/}agents/${AGENT_KEY}/latest.json"
+          for attempt in 1 2 3 4 5; do
+            rm -f /tmp/existing-versions.json
+            etag=""
+            if head_json="$(aws s3api head-object --bucket "${BUCKET}" --key "${versions_key}" 2>/dev/null)"; then
+              etag="$(node -e 'const input=JSON.parse(process.argv[1]); process.stdout.write(input.ETag)' "${head_json}")"
+              aws s3api get-object --bucket "${BUCKET}" --key "${versions_key}" /tmp/existing-versions.json >/dev/null
+            fi
+            args=(
+              --release-file "${release_file}"
+              --min-tutti-version "${MIN_TUTTI_VERSION}"
+              --output "${root}/versions.json"
+            )
+            if [[ -n "${{ inputs.withdraw_versions }}" ]]; then args+=(--withdraw-versions "${{ inputs.withdraw_versions }}"); fi
+            if [[ -n "${etag}" ]]; then args+=(--existing-versions /tmp/existing-versions.json); fi
+            node scripts/release/bin/build-tutti-agent-extension-versions.mjs "${args[@]}" >/dev/null
+            put_args=(
+              --bucket "${BUCKET}"
+              --key "${versions_key}"
+              --body "${root}/versions.json"
+              --content-type application/json
+              --cache-control no-cache
+            )
+            if [[ -n "${etag}" ]]; then put_args+=(--if-match "${etag}"); else put_args+=(--if-none-match '*'); fi
+            if aws s3api put-object "${put_args[@]}" >/dev/null; then break; fi
+            if [[ "${attempt}" == 5 ]]; then exit 1; fi
+          done
+          for attempt in 1 2 3 4 5; do
+            rm -f /tmp/current-versions.json
+            aws s3api get-object \
+              --bucket "${BUCKET}" \
+              --key "${versions_key}" \
+              /tmp/current-versions.json >/dev/null
+            node -e '
+              const fs = require("fs");
+              const versions = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+              const active = versions.versions.find((entry) => entry.status === "active");
+              if (!active) throw new Error("versions index has no active release");
+              fs.writeFileSync(process.argv[2], `${JSON.stringify(active.release, null, 2)}\n`);
+            ' /tmp/current-versions.json "${root}/latest.json"
+            latest_etag=""
+            if latest_head="$(aws s3api head-object --bucket "${BUCKET}" --key "${latest_key}" 2>/dev/null)"; then
+              latest_etag="$(node -e 'const input=JSON.parse(process.argv[1]); process.stdout.write(input.ETag)' "${latest_head}")"
+            fi
+            latest_put_args=(
+              --bucket "${BUCKET}"
+              --key "${latest_key}"
+              --body "${root}/latest.json"
+              --content-type application/json
+              --cache-control no-cache
+            )
+            if [[ -n "${latest_etag}" ]]; then latest_put_args+=(--if-match "${latest_etag}"); else latest_put_args+=(--if-none-match '*'); fi
+            if aws s3api put-object "${latest_put_args[@]}" >/dev/null; then break; fi
+            if [[ "${attempt}" == 5 ]]; then exit 1; fi
+          done
+
+      - name: Invalidate mutable CDN metadata
+        if: ${{ vars.TUTTI_AGENT_RELEASES_CLOUDFRONT_DISTRIBUTION_ID != '' }}
+        env:
+          DISTRIBUTION_ID: ${{ vars.TUTTI_AGENT_RELEASES_CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          invalidation_id="$(aws cloudfront create-invalidation \
+            --distribution-id "${DISTRIBUTION_ID}" \
+            --paths "/${S3_PREFIX:+${S3_PREFIX}/}agents/${AGENT_KEY}/latest.json" "/${S3_PREFIX:+${S3_PREFIX}/}agents/${AGENT_KEY}/versions.json" \
+            --query 'Invalidation.Id' \
+            --output text)"
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "${DISTRIBUTION_ID}" \
+            --id "${invalidation_id}"
+
+      - name: Verify public CDN release
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          public_root="${RELEASE_ASSETS_BASE_URL}/agents/${AGENT_KEY}"
+          verify_root="${RUNNER_TEMP}/hermes-public-release"
+          mkdir -p "${verify_root}"
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if curl -fsS "${public_root}/versions.json" -o "${verify_root}/versions.json" && \
+              curl -fsS "${public_root}/latest.json" -o "${verify_root}/latest.json" && \
+              curl -fsS "${public_root}/${VERSION}/release.json" -o "${verify_root}/release.json" && \
+              curl -fsS "${public_root}/${VERSION}/${AGENT_KEY}-${VERSION}.zip" -o "${verify_root}/${AGENT_KEY}-${VERSION}.zip" && \
+              node --input-type=module -e '
+                import fs from "node:fs";
+                import { validateVersions } from "./scripts/release/lib/versions.mjs";
+                const versions = validateVersions(JSON.parse(fs.readFileSync(process.argv[1], "utf8")));
+                const latest = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+                const release = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+                const record = versions.versions?.find((entry) => entry.version === release.version);
+                const active = versions.versions?.find((entry) => entry.status === "active");
+                if (!record || JSON.stringify(record.release) !== JSON.stringify(release)) {
+                  throw new Error("public versions.json does not contain the published release");
+                }
+                if (!active || JSON.stringify(latest) !== JSON.stringify(active.release)) {
+                  throw new Error("public latest.json does not match the active release");
+                }
+              ' "${verify_root}/versions.json" "${verify_root}/latest.json" "${verify_root}/release.json" && \
+              node scripts/release/bin/verify-tutti-agent-extension-release.mjs \
+                --release-file "${verify_root}/release.json" \
+                --artifact "${verify_root}/${AGENT_KEY}-${VERSION}.zip" \
+                --public-key-file "${RUNNER_TEMP}/hermes-release-public.pem" \
+                --signing-key-id "${SIGNING_KEY_ID}" \
+                --package-dir build/tutti-agent/package; then
+              break
+            fi
+            if [[ "${attempt}" == 12 ]]; then
+              echo "Public CDN release did not converge to the signed ${AGENT_KEY}@${VERSION} bytes." >&2
+              exit 1
+            fi
+            sleep 5
+          done

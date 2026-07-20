@@ -1,0 +1,7 @@
+{
+  "agent.name": "Hermes Agent",
+  "agent.description": "通过标准 ACP 使用 Hermes Agent",
+  "runtime.install.title": "安装托管的 Hermes Agent 运行时",
+  "runtime.install.description": "将固定版本运行时安装到 Tutti 按 Target 隔离的托管目录，不修改当前项目。",
+  "runtime.authRequired": "启动 ACP 会话前，请先在主机上配置 Hermes 凭据。"
+}

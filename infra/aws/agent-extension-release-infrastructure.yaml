@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Private S3 and CloudFront release infrastructure for one Tutti Agent Extension repository.
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Default: tutti-os
+  GitHubRepository:
+    Type: String
+  CreateGitHubOIDCProvider:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+  ExistingGitHubOIDCProviderArn:
+    Type: String
+    Default: ""
+
+Conditions:
+  ShouldCreateOIDCProvider: !Equals [!Ref CreateGitHubOIDCProvider, "true"]
+
+Resources:
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: ShouldCreateOIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      ThumbprintList: [6938fd4d98bab03faadb97b34396831e3780aea1]
+
+  ReleaseBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  ReleaseOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub ${AWS::StackName}-oac
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  ReleaseDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        HttpVersion: http2and3
+        Origins:
+          - Id: release-bucket
+            DomainName: !GetAtt ReleaseBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt ReleaseOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: release-bucket
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD, OPTIONS]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+  ReleaseBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ReleaseBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub ${ReleaseBucket.Arn}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${ReleaseDistribution}"
+
+  GitHubReleaseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - ShouldCreateOIDCProvider
+                - !Ref GitHubOIDCProvider
+                - !Ref ExistingGitHubOIDCProviderArn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubOwner}/${GitHubRepository}:ref:refs/heads/main"
+      Policies:
+        - PolicyName: publish-agent-extension
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt ReleaseBucket.Arn
+                Condition:
+                  StringLike:
+                    s3:prefix: [tutti-agent-releases/*]
+              - Effect: Allow
+                Action: ["s3:GetObject", "s3:PutObject"]
+                Resource: !Sub ${ReleaseBucket.Arn}/tutti-agent-releases/*
+              - Effect: Allow
+                Action:
+                  - cloudfront:CreateInvalidation
+                  - cloudfront:GetInvalidation
+                Resource: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${ReleaseDistribution}"
+
+Outputs:
+  AwsRegion:
+    Value: !Ref AWS::Region
+  RoleArn:
+    Value: !GetAtt GitHubReleaseRole.Arn
+  BucketName:
+    Value: !Ref ReleaseBucket
+  CloudFrontDistributionId:
+    Value: !Ref ReleaseDistribution
+  ReleaseAssetsBaseUrl:
+    Value: !Sub "https://${ReleaseDistribution.DomainName}/tutti-agent-releases"

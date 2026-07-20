@@ -1,0 +1,24 @@
+lockfileVersion: "9.0"
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+  .:
+    dependencies:
+      semver:
+        specifier: 7.8.0
+        version: 7.8.0
+
+packages:
+  semver@7.8.0:
+    resolution:
+      {
+        integrity: sha512-AcM7dV/5ul4EekoQ29Agm5vri8JNqRyj39o0qpX6vDF2GZrtutZl5RwgD1XnZjiTAfncsJhMI48QQH3sN87YNA==,
+      }
+    engines: { node: ">=10" }
+    hasBin: true
+
+snapshots:
+  semver@7.8.0: {}
