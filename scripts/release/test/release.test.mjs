@@ -304,6 +304,8 @@ test("rejects non-HTTP and CSS SVG references", async () => {
 test("both validators reject active and non-local SVG forms", async () => {
   const packageDir = await repositoryFixture();
   const iconPath = path.join(packageDir, "assets", "icon.svg");
+  await mutateManifest(packageDir, (manifest) => { manifest.icon.src = "assets/icon.svg"; });
+  await rm(path.join(packageDir, "assets", "icon.png"));
   const unsafeSVGs = [
     '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>\n',
     '<svg:svg xmlns:svg="http://www.w3.org/2000/svg"><svg:script>alert(1)</svg:script></svg:svg>\n',

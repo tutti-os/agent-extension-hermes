@@ -65,21 +65,21 @@ test("withdraws requested historical versions without retaining release payloads
   };
   const historicalRelease = {
     ...release,
-    version: "1.0.0",
+    version: "0.9.0",
     manifest: {
       schemaVersion: "tutti.agent.manifest.v1",
       agentKey: manifest.agentKey,
-      version: "1.0.0",
+      version: "0.9.0",
       sidebarIcon: { src: "assets/sidebar.svg", mimeType: "image/svg+xml" }
     },
-    artifactUrl: `https://example.test/agents/${manifest.agentKey}/1.0.0/${manifest.agentKey}-1.0.0.zip`
+    artifactUrl: `https://example.test/agents/${manifest.agentKey}/0.9.0/${manifest.agentKey}-0.9.0.zip`
   };
   const existing = {
     schemaVersion: "tutti.agent.versions.v1",
     agentKey: manifest.agentKey,
     versions: [
       {
-        version: "1.0.0",
+        version: "0.9.0",
         minTuttiVersion: "0.0.0",
         requiredHostCapabilities: [],
         status: "active",
@@ -98,10 +98,10 @@ test("withdraws requested historical versions without retaining release payloads
     minTuttiVersion: "0.0.0",
     output,
     releaseFile,
-    withdrawVersions: "1.0.0"
+    withdrawVersions: "0.9.0"
   });
 
   const versions = JSON.parse(await readFile(output, "utf8"));
-  assert.equal(versions.versions.find((entry) => entry.version === "1.0.0").status, "withdrawn");
-  assert.equal("release" in versions.versions.find((entry) => entry.version === "1.0.0"), false);
+  assert.equal(versions.versions.find((entry) => entry.version === "0.9.0").status, "withdrawn");
+  assert.equal("release" in versions.versions.find((entry) => entry.version === "0.9.0"), false);
 });
