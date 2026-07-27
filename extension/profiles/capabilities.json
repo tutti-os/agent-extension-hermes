@@ -9,6 +9,8 @@
     "permissionModes": true,
     "modelSelection": false,
     "commands": true,
+    "compact": true,
+    "browserUse": true,
     "skills": true
   }
 }
