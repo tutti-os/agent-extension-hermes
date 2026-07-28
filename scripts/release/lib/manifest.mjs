@@ -41,6 +41,7 @@ const presentationAssetExtensions = new Set([
   ".webp"
 ]);
 const binaryNamePattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u;
+const envName = /^[A-Z_][A-Z0-9_]*$/u;
 const permissionSemantics = new Set([
   "read-only",
   "ask-before-write",
@@ -473,7 +474,8 @@ function validateProfileShape(kind, profile) {
         "permission",
         "permissionModes",
         "slashCommands",
-        "skills"
+        "skills",
+        "runtimePrep"
       ],
       kind
     );
@@ -511,6 +513,7 @@ function validateProfileShape(kind, profile) {
       }
     }
     validateSlashCommands(profile.slashCommands);
+    validateRuntimePrep(profile.runtimePrep);
     if (profile.skills !== undefined) {
       rejectObjectKeys(
         profile.skills,
@@ -584,6 +587,96 @@ function validateSlashCommands(slashCommands) {
       !slashCommandEffects.has(command.effect)
     ) {
       throw new Error(`${label}.effect is unsupported`);
+    }
+  }
+}
+
+function requireEnvName(value, label) {
+  const normalized = requireString(value, label).trim();
+  if (!envName.test(normalized)) {
+    throw new Error(`${label} must be a safe environment variable name`);
+  }
+  return normalized;
+}
+
+function validateRuntimePrep(runtimePrep) {
+  if (runtimePrep === undefined) return;
+  rejectObjectKeys(runtimePrep, ["instructionsFile", "home"], "composer.runtimePrep");
+  if (runtimePrep.instructionsFile !== undefined) {
+    requireSafeRelativePath(
+      runtimePrep.instructionsFile,
+      "composer.runtimePrep.instructionsFile"
+    );
+  }
+  if (runtimePrep.home === undefined) return;
+  rejectObjectKeys(
+    runtimePrep.home,
+    [
+      "envVar",
+      "dirName",
+      "sourceEnvVar",
+      "sourceDefaultRel",
+      "copyFiles",
+      "configFile",
+      "configFormat",
+      "externalDirsKey",
+      "userHomeSkillDir",
+      "includeSkillRoots",
+      "includeUserHomeDir"
+    ],
+    "composer.runtimePrep.home"
+  );
+  requireEnvName(runtimePrep.home.envVar, "composer.runtimePrep.home.envVar");
+  requireSafeRelativePath(runtimePrep.home.dirName, "composer.runtimePrep.home.dirName");
+  if (runtimePrep.home.sourceEnvVar !== undefined) {
+    requireEnvName(
+      runtimePrep.home.sourceEnvVar,
+      "composer.runtimePrep.home.sourceEnvVar"
+    );
+  }
+  if (runtimePrep.home.sourceDefaultRel !== undefined) {
+    requireSafeRelativePath(
+      runtimePrep.home.sourceDefaultRel,
+      "composer.runtimePrep.home.sourceDefaultRel"
+    );
+  }
+  const copyFiles = runtimePrep.home.copyFiles ?? [];
+  if (!Array.isArray(copyFiles)) {
+    throw new Error("composer.runtimePrep.home.copyFiles must be an array");
+  }
+  for (const [index, file] of copyFiles.entries()) {
+    requireSafeRelativePath(file, `composer.runtimePrep.home.copyFiles[${index}]`);
+  }
+  if (runtimePrep.home.configFile !== undefined) {
+    requireSafeRelativePath(
+      runtimePrep.home.configFile,
+      "composer.runtimePrep.home.configFile"
+    );
+  }
+  if (
+    runtimePrep.home.configFormat !== undefined &&
+    runtimePrep.home.configFormat !== "yaml"
+  ) {
+    throw new Error("composer.runtimePrep.home.configFormat is unsupported");
+  }
+  if (
+    runtimePrep.home.externalDirsKey !== undefined &&
+    JSON.stringify(runtimePrep.home.externalDirsKey) !== JSON.stringify(["skills", "external_dirs"])
+  ) {
+    throw new Error("composer.runtimePrep.home.externalDirsKey is unsupported");
+  }
+  if (runtimePrep.home.userHomeSkillDir !== undefined) {
+    requireSafeRelativePath(
+      runtimePrep.home.userHomeSkillDir,
+      "composer.runtimePrep.home.userHomeSkillDir"
+    );
+  }
+  for (const key of ["includeSkillRoots", "includeUserHomeDir"]) {
+    if (
+      runtimePrep.home[key] !== undefined &&
+      typeof runtimePrep.home[key] !== "boolean"
+    ) {
+      throw new Error(`composer.runtimePrep.home.${key} must be a boolean`);
     }
   }
 }

@@ -30,6 +30,7 @@ EXACT_UV_PACKAGE = re.compile(
     r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[A-Za-z0-9._+-]*)?$"
 )
 BINARY_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+ENV_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 PRESENTATION_ASSET_LIMIT = 256 << 10
 ALLOWED_PACKAGE_EXTENSIONS = {
     ".json",
@@ -397,6 +398,80 @@ def validate_slash_commands(value: Any) -> None:
             raise ValidationError(f"{field}.effect is unsupported")
 
 
+def require_env_name(value: Any, field: str) -> str:
+    name = require_string(value, field).strip()
+    if not ENV_NAME.fullmatch(name):
+        raise ValidationError(f"{field} must be a safe environment variable name")
+    return name
+
+
+def validate_runtime_prep(value: Any) -> None:
+    if value is None:
+        return
+    if not isinstance(value, dict):
+        raise ValidationError("composer.runtimePrep must be an object")
+    reject_unknown_keys(value, {"instructionsFile", "home"}, "composer.runtimePrep")
+    if "instructionsFile" in value:
+        require_safe_relative_path(
+            value.get("instructionsFile"), "composer.runtimePrep.instructionsFile"
+        )
+    home = value.get("home")
+    if home is None:
+        return
+    if not isinstance(home, dict):
+        raise ValidationError("composer.runtimePrep.home must be an object")
+    reject_unknown_keys(
+        home,
+        {
+            "envVar",
+            "dirName",
+            "sourceEnvVar",
+            "sourceDefaultRel",
+            "copyFiles",
+            "configFile",
+            "configFormat",
+            "externalDirsKey",
+            "userHomeSkillDir",
+            "includeSkillRoots",
+            "includeUserHomeDir",
+        },
+        "composer.runtimePrep.home",
+    )
+    require_env_name(home.get("envVar"), "composer.runtimePrep.home.envVar")
+    require_safe_relative_path(home.get("dirName"), "composer.runtimePrep.home.dirName")
+    if "sourceEnvVar" in home:
+        require_env_name(
+            home.get("sourceEnvVar"), "composer.runtimePrep.home.sourceEnvVar"
+        )
+    if "sourceDefaultRel" in home:
+        require_safe_relative_path(
+            home.get("sourceDefaultRel"), "composer.runtimePrep.home.sourceDefaultRel"
+        )
+    copy_files = home.get("copyFiles", [])
+    if not isinstance(copy_files, list):
+        raise ValidationError("composer.runtimePrep.home.copyFiles must be an array")
+    for index, file in enumerate(copy_files):
+        require_safe_relative_path(
+            file, f"composer.runtimePrep.home.copyFiles[{index}]"
+        )
+    if "configFile" in home:
+        require_safe_relative_path(
+            home.get("configFile"), "composer.runtimePrep.home.configFile"
+        )
+    if home.get("configFormat") not in {None, "yaml"}:
+        raise ValidationError("composer.runtimePrep.home.configFormat is unsupported")
+    external_dirs_key = home.get("externalDirsKey")
+    if external_dirs_key is not None and external_dirs_key != ["skills", "external_dirs"]:
+        raise ValidationError("composer.runtimePrep.home.externalDirsKey is unsupported")
+    if "userHomeSkillDir" in home:
+        require_safe_relative_path(
+            home.get("userHomeSkillDir"), "composer.runtimePrep.home.userHomeSkillDir"
+        )
+    for key in ("includeSkillRoots", "includeUserHomeDir"):
+        if key in home and not isinstance(home.get(key), bool):
+            raise ValidationError(f"composer.runtimePrep.home.{key} must be a boolean")
+
+
 def validate_composer_profile(profile: dict[str, Any]) -> bool:
     reject_unknown_keys(
         profile,
@@ -407,6 +482,7 @@ def validate_composer_profile(profile: dict[str, Any]) -> bool:
             "permissionModes",
             "slashCommands",
             "skills",
+            "runtimePrep",
         },
         "composer",
     )
@@ -442,6 +518,7 @@ def validate_composer_profile(profile: dict[str, Any]) -> bool:
         if decision is not None and not safe_approval and not safe_denial:
             raise ValidationError(f"{field}.automaticDecision is unsafe")
     validate_slash_commands(profile.get("slashCommands"))
+    validate_runtime_prep(profile.get("runtimePrep"))
     skills = profile.get("skills")
     if skills is None:
         return False

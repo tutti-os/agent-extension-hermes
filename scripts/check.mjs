@@ -24,6 +24,8 @@ const expectedSlashCommands = { commandCatalogAuthoritative: true, commands: [{ 
 if (JSON.stringify(composer.slashCommands) !== JSON.stringify(expectedSlashCommands)) throw new Error('Hermes signed slash command policy changed');
 const expectedSkills = { invocation: 'textTrigger', triggerPrefix: '/', roots: [{ scope: 'workspace', path: '.agent_context/skills' }, { scope: 'user', path: '.agent_context/skills' }, { scope: 'user', path: '.hermes/skills' }] };
 if (JSON.stringify(composer.skills) !== JSON.stringify(expectedSkills)) throw new Error('Hermes Skill roots changed');
+const expectedRuntimePrep = { instructionsFile: 'AGENTS.md', home: { envVar: 'HERMES_HOME', dirName: 'hermes', sourceEnvVar: 'HERMES_HOME', sourceDefaultRel: '.hermes', copyFiles: ['config.yaml', 'auth.json', '.env'], configFile: 'config.yaml', configFormat: 'yaml', externalDirsKey: ['skills', 'external_dirs'], userHomeSkillDir: 'skills', includeSkillRoots: true, includeUserHomeDir: true } };
+if (JSON.stringify(composer.runtimePrep) !== JSON.stringify(expectedRuntimePrep)) throw new Error('Hermes runtimePrep overlay changed');
 const tools = JSON.parse(await readFile(path.join(packageDir, manifest.profiles.tools), 'utf8'));
 if (tools.tools?.length !== 0) throw new Error('Hermes tools must remain generic');
 await rejectExecutables(packageDir);

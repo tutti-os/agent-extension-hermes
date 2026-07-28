@@ -23,5 +23,21 @@
       { "scope": "user", "path": ".agent_context/skills" },
       { "scope": "user", "path": ".hermes/skills" }
     ]
+  },
+  "runtimePrep": {
+    "instructionsFile": "AGENTS.md",
+    "home": {
+      "envVar": "HERMES_HOME",
+      "dirName": "hermes",
+      "sourceEnvVar": "HERMES_HOME",
+      "sourceDefaultRel": ".hermes",
+      "copyFiles": ["config.yaml", "auth.json", ".env"],
+      "configFile": "config.yaml",
+      "configFormat": "yaml",
+      "externalDirsKey": ["skills", "external_dirs"],
+      "userHomeSkillDir": "skills",
+      "includeSkillRoots": true,
+      "includeUserHomeDir": true
+    }
   }
 }
