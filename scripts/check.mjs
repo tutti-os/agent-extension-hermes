@@ -20,7 +20,7 @@ if (JSON.stringify(capabilities.declared) !== JSON.stringify(expectedCapabilitie
 const composer = JSON.parse(await readFile(path.join(packageDir, manifest.profiles.composer), 'utf8'));
 const expectedModes = [{ runtimeId: 'dont_ask', semantic: 'full-access', automaticDecision: 'approved' }];
 if (JSON.stringify(composer.permissionModes) !== JSON.stringify(expectedModes)) throw new Error('Hermes signed permission policy changed');
-const expectedSlashCommands = { commandCatalogAuthoritative: true, commands: [{ name: 'compact', effect: 'submitImmediate' }, { name: 'help' }, { name: 'model' }, { name: 'tools' }, { name: 'context' }, { name: 'reset' }, { name: 'steer' }, { name: 'queue' }, { name: 'version' }] };
+const expectedSlashCommands = { commandCatalogAuthoritative: true, commands: [{ name: 'compact', effect: 'submitImmediate' }, { name: 'context', effect: 'submitImmediate' }, { name: 'status', effect: 'showStatus' }] };
 if (JSON.stringify(composer.slashCommands) !== JSON.stringify(expectedSlashCommands)) throw new Error('Hermes signed slash command policy changed');
 const expectedSkills = { invocation: 'textTrigger', triggerPrefix: '/', roots: [{ scope: 'workspace', path: '.agent_context/skills' }, { scope: 'user', path: '.agent_context/skills' }, { scope: 'user', path: '.hermes/skills' }] };
 if (JSON.stringify(composer.skills) !== JSON.stringify(expectedSkills)) throw new Error('Hermes Skill roots changed');

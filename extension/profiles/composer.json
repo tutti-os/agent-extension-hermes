@@ -11,14 +11,8 @@
     "commandCatalogAuthoritative": true,
     "commands": [
       { "name": "compact", "effect": "submitImmediate" },
-      { "name": "help" },
-      { "name": "model" },
-      { "name": "tools" },
-      { "name": "context" },
-      { "name": "reset" },
-      { "name": "steer" },
-      { "name": "queue" },
-      { "name": "version" }
+      { "name": "context", "effect": "submitImmediate" },
+      { "name": "status", "effect": "showStatus" }
     ]
   },
   "skills": {
