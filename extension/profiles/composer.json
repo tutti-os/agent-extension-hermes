@@ -7,12 +7,21 @@
     "semantic": "full-access",
     "automaticDecision": "approved"
   }],
+  "slashCommands": {
+    "commandCatalogAuthoritative": true,
+    "commands": [
+      { "name": "compact", "effect": "submitImmediate" },
+      { "name": "context", "effect": "submitImmediate" },
+      { "name": "status", "effect": "showStatus" }
+    ]
+  },
   "skills": {
     "invocation": "textTrigger",
     "triggerPrefix": "/",
     "roots": [
       { "scope": "workspace", "path": ".agent_context/skills" },
-      { "scope": "user", "path": ".agent_context/skills" }
+      { "scope": "user", "path": ".agent_context/skills" },
+      { "scope": "user", "path": ".hermes/skills" }
     ]
   }
 }

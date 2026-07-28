@@ -16,6 +16,11 @@ The signed composer profile maps Hermes `dont_ask` to Tutti `full-access` and
 declares automatic approval only for that semantic tier. The daemon rejects
 automatic approval on less permissive tiers.
 
+The package declares Hermes-owned slash commands, browser-use support, and
+workspace/user Skill roots. Tutti injects its managed runtime Skills through
+the host runtime-preparation contract and passes all extension Skill roots to
+Hermes through `skills.external_dirs`.
+
 ## Validation
 
 ```sh

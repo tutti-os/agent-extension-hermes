@@ -58,7 +58,15 @@ CAPABILITY_NAMES = {
     "permissionModes",
     "modelSelection",
     "commands",
+    "browserUse",
+    "computerUse",
     "skills",
+}
+SLASH_COMMAND_EFFECTS = {
+    "submitImmediate",
+    "showStatus",
+    "activateGoalMode",
+    "togglePlanMode",
 }
 
 
@@ -352,10 +360,54 @@ def validate_skill_root(root: Any, index: int) -> None:
     require_safe_relative_path(root.get("path"), f"{field}.path")
 
 
+def validate_slash_commands(value: Any) -> None:
+    if value is None:
+        return
+    if not isinstance(value, dict):
+        raise ValidationError("composer.slashCommands must be an object")
+    reject_unknown_keys(
+        value,
+        {"commandCatalogAuthoritative", "commands"},
+        "composer.slashCommands",
+    )
+    authoritative = value.get("commandCatalogAuthoritative")
+    if authoritative is not None and not isinstance(authoritative, bool):
+        raise ValidationError(
+            "composer.slashCommands.commandCatalogAuthoritative must be a boolean"
+        )
+    commands = value.get("commands")
+    if commands is None:
+        return
+    if not isinstance(commands, list):
+        raise ValidationError("composer.slashCommands.commands must be an array")
+    names: set[str] = set()
+    for index, command in enumerate(commands):
+        field = f"composer.slashCommands.commands[{index}]"
+        if not isinstance(command, dict):
+            raise ValidationError(f"{field} must be an object")
+        reject_unknown_keys(command, {"name", "effect"}, field)
+        name = require_string(command.get("name"), f"{field}.name").strip()
+        if any(character.isspace() for character in name):
+            raise ValidationError(f"{field}.name must not contain whitespace")
+        if name in names:
+            raise ValidationError(f"{field}.name must be unique")
+        names.add(name)
+        effect = command.get("effect")
+        if effect is not None and effect not in SLASH_COMMAND_EFFECTS:
+            raise ValidationError(f"{field}.effect is unsupported")
+
+
 def validate_composer_profile(profile: dict[str, Any]) -> bool:
     reject_unknown_keys(
         profile,
-        {"schemaVersion", "model", "permission", "permissionModes", "skills"},
+        {
+            "schemaVersion",
+            "model",
+            "permission",
+            "permissionModes",
+            "slashCommands",
+            "skills",
+        },
         "composer",
     )
     model = profile.get("model")
@@ -389,6 +441,7 @@ def validate_composer_profile(profile: dict[str, Any]) -> bool:
         safe_denial = decision == "denied" and mode.get("semantic") == "read-only"
         if decision is not None and not safe_approval and not safe_denial:
             raise ValidationError(f"{field}.automaticDecision is unsafe")
+    validate_slash_commands(profile.get("slashCommands"))
     skills = profile.get("skills")
     if skills is None:
         return False

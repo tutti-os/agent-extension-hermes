@@ -15,12 +15,14 @@ if (discovery.candidates?.length !== 1 || JSON.stringify(candidate.binaryNames) 
 if (JSON.stringify(candidate.version) !== JSON.stringify({ args: ['--version'], constraint: '>=0.18.2 <0.19.0' })) throw new Error('Hermes discovery version contract changed');
 if (JSON.stringify(candidate.launchArgs) !== JSON.stringify(['acp']) || candidate.probe?.kind !== 'acp-initialize' || candidate.probe.timeoutMs !== 15000) throw new Error('Hermes discovery must use the bounded ACP probe');
 const capabilities = JSON.parse(await readFile(path.join(packageDir, manifest.profiles.capabilities), 'utf8'));
-const expectedCapabilities = { imageInput: true, audioInput: false, embeddedContext: false, interrupt: true, resume: true, permissionModes: true, modelSelection: false, commands: true, skills: true };
+const expectedCapabilities = { imageInput: true, audioInput: false, embeddedContext: false, interrupt: true, resume: true, permissionModes: true, modelSelection: false, commands: true, browserUse: true, skills: true };
 if (JSON.stringify(capabilities.declared) !== JSON.stringify(expectedCapabilities)) throw new Error('Hermes capabilities changed without runtime evidence');
 const composer = JSON.parse(await readFile(path.join(packageDir, manifest.profiles.composer), 'utf8'));
 const expectedModes = [{ runtimeId: 'dont_ask', semantic: 'full-access', automaticDecision: 'approved' }];
 if (JSON.stringify(composer.permissionModes) !== JSON.stringify(expectedModes)) throw new Error('Hermes signed permission policy changed');
-const expectedSkills = { invocation: 'textTrigger', triggerPrefix: '/', roots: [{ scope: 'workspace', path: '.agent_context/skills' }, { scope: 'user', path: '.agent_context/skills' }] };
+const expectedSlashCommands = { commandCatalogAuthoritative: true, commands: [{ name: 'compact', effect: 'submitImmediate' }, { name: 'context', effect: 'submitImmediate' }, { name: 'status', effect: 'showStatus' }] };
+if (JSON.stringify(composer.slashCommands) !== JSON.stringify(expectedSlashCommands)) throw new Error('Hermes signed slash command policy changed');
+const expectedSkills = { invocation: 'textTrigger', triggerPrefix: '/', roots: [{ scope: 'workspace', path: '.agent_context/skills' }, { scope: 'user', path: '.agent_context/skills' }, { scope: 'user', path: '.hermes/skills' }] };
 if (JSON.stringify(composer.skills) !== JSON.stringify(expectedSkills)) throw new Error('Hermes Skill roots changed');
 const tools = JSON.parse(await readFile(path.join(packageDir, manifest.profiles.tools), 'utf8'));
 if (tools.tools?.length !== 0) throw new Error('Hermes tools must remain generic');

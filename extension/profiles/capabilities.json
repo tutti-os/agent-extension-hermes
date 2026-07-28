@@ -9,6 +9,7 @@
     "permissionModes": true,
     "modelSelection": false,
     "commands": true,
+    "browserUse": true,
     "skills": true
   }
 }
