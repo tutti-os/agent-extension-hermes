@@ -58,8 +58,16 @@ const capabilityNames = [
   "permissionModes",
   "modelSelection",
   "commands",
+  "browserUse",
+  "computerUse",
   "skills"
 ];
+const slashCommandEffects = new Set([
+  "submitImmediate",
+  "showStatus",
+  "activateGoalMode",
+  "togglePlanMode"
+]);
 const allowedPlaceholders = new Set([
   "${projectRoot}",
   "${installRoot}",
@@ -459,7 +467,14 @@ function validateProfileShape(kind, profile) {
   if (kind === "composer") {
     rejectUnknownKeys(
       profile,
-      ["schemaVersion", "model", "permission", "permissionModes", "skills"],
+      [
+        "schemaVersion",
+        "model",
+        "permission",
+        "permissionModes",
+        "slashCommands",
+        "skills"
+      ],
       kind
     );
     rejectObjectKeys(profile.model, ["source"], "composer.model");
@@ -495,6 +510,7 @@ function validateProfileShape(kind, profile) {
         if (!safeApproval && !safeDenial) throw new Error(`${label}.automaticDecision is unsafe`);
       }
     }
+    validateSlashCommands(profile.slashCommands);
     if (profile.skills !== undefined) {
       rejectObjectKeys(
         profile.skills,
@@ -531,6 +547,44 @@ function validateProfileShape(kind, profile) {
   }
   if (kind === "events") {
     rejectUnknownKeys(profile, ["schemaVersion", "events"], kind);
+  }
+}
+
+function validateSlashCommands(slashCommands) {
+  if (slashCommands === undefined) return;
+  rejectObjectKeys(
+    slashCommands,
+    ["commandCatalogAuthoritative", "commands"],
+    "composer.slashCommands"
+  );
+  if (
+    slashCommands.commandCatalogAuthoritative !== undefined &&
+    typeof slashCommands.commandCatalogAuthoritative !== "boolean"
+  ) {
+    throw new Error("composer.slashCommands.commandCatalogAuthoritative must be a boolean");
+  }
+  if (slashCommands.commands === undefined) return;
+  if (!Array.isArray(slashCommands.commands)) {
+    throw new Error("composer.slashCommands.commands must be an array");
+  }
+  const names = new Set();
+  for (const [index, command] of slashCommands.commands.entries()) {
+    const label = `composer.slashCommands.commands[${index}]`;
+    rejectObjectKeys(command, ["name", "effect"], label);
+    const name = requireString(command.name, `${label}.name`).trim();
+    if (/\s/u.test(name)) {
+      throw new Error(`${label}.name must not contain whitespace`);
+    }
+    if (names.has(name)) {
+      throw new Error(`${label}.name must be unique`);
+    }
+    names.add(name);
+    if (
+      command.effect !== undefined &&
+      !slashCommandEffects.has(command.effect)
+    ) {
+      throw new Error(`${label}.effect is unsupported`);
+    }
   }
 }
 
