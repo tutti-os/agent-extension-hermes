@@ -177,7 +177,11 @@ function validateRuntime(runtime) {
   if (!runtime.launch || typeof runtime.launch !== "object") {
     throw new Error("manifest runtime.launch is required");
   }
-  rejectUnknownKeys(runtime.launch, ["executable", "args"], "runtime launch");
+  rejectUnknownKeys(
+    runtime.launch,
+    ["executable", "args", "publishUserCommand"],
+    "runtime launch"
+  );
   const executable = requireString(
     runtime.launch.executable,
     "runtime launch executable"
@@ -191,6 +195,12 @@ function validateRuntime(runtime) {
     throw new Error("runtime launch executable must stay under ${installRoot}");
   }
   validateArgv(runtime.launch.args ?? [], "runtime launch args");
+  if (
+    runtime.launch.publishUserCommand !== undefined &&
+    typeof runtime.launch.publishUserCommand !== "boolean"
+  ) {
+    throw new Error("runtime launch publishUserCommand must be a boolean");
+  }
 }
 
 function validateInstall(install) {
