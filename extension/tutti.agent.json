@@ -15,7 +15,8 @@
     },
     "launch": {
       "executable": "${installRoot}/bin/hermes",
-      "args": ["acp"]
+      "args": ["acp"],
+      "publishUserCommand": false
     }
   },
   "profiles": {

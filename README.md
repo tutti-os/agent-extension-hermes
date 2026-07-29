@@ -11,6 +11,8 @@ executable extension code.
 - Discovery: `hermes --version`
 - ACP launch: `hermes acp`
 - Managed install: isolated `uv tool install` under the Target runtime root
+- User command publication: disabled so an existing `~/.local/bin/hermes`
+  remains untouched
 
 The signed composer profile maps Hermes `dont_ask` to Tutti `full-access` and
 declares automatic approval only for that semantic tier. The daemon rejects

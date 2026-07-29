@@ -220,7 +220,9 @@ def check_install(runtime: dict[str, Any]) -> None:
     if not isinstance(install, dict) or not isinstance(launch, dict):
         raise ValidationError("runtime.install and runtime.launch must be objects")
     reject_unknown_keys(install, {"runner", "args"}, "runtime.install")
-    reject_unknown_keys(launch, {"executable", "args"}, "runtime.launch")
+    reject_unknown_keys(
+        launch, {"executable", "args", "publishUserCommand"}, "runtime.launch"
+    )
     runner = install.get("runner")
     if runner not in {"npm", "pnpm", "uv"}:
         raise ValidationError("runtime.install.runner must be npm, pnpm, or uv")
@@ -251,6 +253,9 @@ def check_install(runtime: dict[str, Any]) -> None:
     ):
         raise ValidationError("launch executable must stay under ${installRoot}")
     require_string_array(launch.get("args"), "runtime.launch.args")
+    publish_user_command = launch.get("publishUserCommand")
+    if publish_user_command is not None and not isinstance(publish_user_command, bool):
+        raise ValidationError("runtime.launch.publishUserCommand must be a boolean")
 
 
 def validate_discovery_profile(profile: dict[str, Any]) -> None:

@@ -152,6 +152,22 @@ test("rejects managed executables that escape installRoot", async () => {
   await assert.rejects(validatePackage(packageDir, "hermes"), /stay under/u);
 });
 
+test("accepts a private managed runtime command", async () => {
+  const packageDir = await temporaryFixture();
+  await mutateManifest(packageDir, (manifest) => {
+    manifest.runtime.launch.publishUserCommand = false;
+  });
+  await validatePackage(packageDir, "hermes");
+});
+
+test("rejects a non-boolean managed runtime publication policy", async () => {
+  const packageDir = await temporaryFixture();
+  await mutateManifest(packageDir, (manifest) => {
+    manifest.runtime.launch.publishUserCommand = "false";
+  });
+  await assert.rejects(validatePackage(packageDir, "hermes"), /must be a boolean/u);
+});
+
 test("rejects unsupported manifest fields in both validators", async () => {
   const packageDir = await temporaryFixture();
   await mutateManifest(packageDir, (manifest) => {
