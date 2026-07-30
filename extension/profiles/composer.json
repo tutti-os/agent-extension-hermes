@@ -2,11 +2,21 @@
   "schemaVersion": "tutti.agent.composer.v1",
   "model": { "source": "acp-session-models" },
   "permission": { "source": "acp-session-modes" },
-  "permissionModes": [{
-    "runtimeId": "dont_ask",
-    "semantic": "full-access",
-    "automaticDecision": "approved"
-  }],
+  "permissionModes": [
+    {
+      "runtimeId": "default",
+      "semantic": "ask-before-write"
+    },
+    {
+      "runtimeId": "accept_edits",
+      "semantic": "accept-edits"
+    },
+    {
+      "runtimeId": "dont_ask",
+      "semantic": "full-access",
+      "automaticDecision": "approved"
+    }
+  ],
   "slashCommands": {
     "commandCatalogAuthoritative": true,
     "commands": [

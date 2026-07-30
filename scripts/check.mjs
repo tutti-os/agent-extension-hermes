@@ -18,7 +18,11 @@ const capabilities = JSON.parse(await readFile(path.join(packageDir, manifest.pr
 const expectedCapabilities = { imageInput: true, audioInput: false, embeddedContext: false, interrupt: true, resume: true, permissionModes: true, modelSelection: false, commands: true, browserUse: true, skills: true };
 if (JSON.stringify(capabilities.declared) !== JSON.stringify(expectedCapabilities)) throw new Error('Hermes capabilities changed without runtime evidence');
 const composer = JSON.parse(await readFile(path.join(packageDir, manifest.profiles.composer), 'utf8'));
-const expectedModes = [{ runtimeId: 'dont_ask', semantic: 'full-access', automaticDecision: 'approved' }];
+const expectedModes = [
+  { runtimeId: 'default', semantic: 'ask-before-write' },
+  { runtimeId: 'accept_edits', semantic: 'accept-edits' },
+  { runtimeId: 'dont_ask', semantic: 'full-access', automaticDecision: 'approved' }
+];
 if (JSON.stringify(composer.permissionModes) !== JSON.stringify(expectedModes)) throw new Error('Hermes signed permission policy changed');
 const expectedSlashCommands = { commandCatalogAuthoritative: true, commands: [{ name: 'compact', effect: 'submitImmediate' }, { name: 'context', effect: 'submitImmediate' }, { name: 'status', effect: 'showStatus' }] };
 if (JSON.stringify(composer.slashCommands) !== JSON.stringify(expectedSlashCommands)) throw new Error('Hermes signed slash command policy changed');
