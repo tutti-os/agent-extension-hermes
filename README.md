@@ -14,9 +14,10 @@ executable extension code.
 - User command publication: disabled so an existing `~/.local/bin/hermes`
   remains untouched
 
-The signed composer profile maps Hermes `dont_ask` to Tutti `full-access` and
-declares automatic approval only for that semantic tier. The daemon rejects
-automatic approval on less permissive tiers.
+The signed composer profile maps the ACP-advertised Hermes modes `default`,
+`accept_edits`, and `dont_ask` to Tutti `ask-before-write`, `accept-edits`, and
+`full-access`. It declares automatic approval only for the `full-access`
+semantic tier. The daemon rejects automatic approval on less permissive tiers.
 
 The package declares Hermes-owned slash commands, browser-use support, and
 workspace/user Skill roots. Tutti injects its managed runtime Skills through
