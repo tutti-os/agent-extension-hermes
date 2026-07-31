@@ -1,11 +1,10 @@
 {
   "schemaVersion": "tutti.agent.manifest.v2",
   "agentKey": "hermes",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "name": "Hermes Agent",
   "description": "Hermes Agent through the standard Agent Client Protocol",
   "icon": { "type": "asset", "src": "assets/icon.png" },
-  "maskIcon": { "type": "asset", "src": "assets/mask-icon.png" },
   "heroImage": { "type": "asset", "src": "assets/hero-image.jpg" },
   "runtime": {
     "kind": "standard-acp",
