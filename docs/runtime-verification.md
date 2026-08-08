@@ -6,6 +6,29 @@ complete a standard ACP initialize probe within 15 seconds. The managed runtime
 stays private to Tutti and does not publish `~/.local/bin/hermes`, preserving
 any user-managed Hermes installation at that path.
 
+## Windows host acceptance
+
+Hermes installation on Windows has two dependency-resolution stages. The Tutti
+host first resolves its managed `uv` toolchain from the packaged archive,
+falling back to an official download only when that resource is absent. Then
+`uv tool install` resolves `hermes-agent[acp]==0.18.2` and Python dependencies
+over the configured package index. The extension owns only the second-stage
+declaration.
+
+For a packaged Windows acceptance run:
+
+1. Start Tutti without `uv` on `PATH` and with GitHub release downloads blocked.
+2. Install the Hermes Target and confirm tuttid extracts the packaged,
+   checksum-pinned `uv` archive without a request to GitHub.
+3. Allow the configured Python package index and confirm the Tutti Target
+   status/version probe reports a version in `>=0.18.2 <0.19.0`; do not expect
+   a global `hermes` command because `publishUserCommand` is disabled.
+4. Run the standard ACP `initialize` and `session/new` probe.
+
+If step 2 fails, diagnose the Tutti host resource or proxy contract rather than
+changing this extension. If step 3 fails, diagnose package-index connectivity;
+the current scope does not bundle Hermes or its Python dependency graph.
+
 ## Permission modes
 
 An ACP `initialize` plus `session/new` probe against the pinned runtime reports

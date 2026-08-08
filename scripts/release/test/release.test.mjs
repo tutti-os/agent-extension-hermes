@@ -18,8 +18,10 @@ import test, { after } from "node:test";
 import { buildRelease } from "../lib/release.mjs";
 import { validatePackage } from "../lib/manifest.mjs";
 import { verifyRelease } from "../lib/verify.mjs";
+import { resolvePythonCommand } from "../../python-command.mjs";
 
 const temporaryRoots = new Set();
+const pythonCommand = resolvePythonCommand();
 
 after(async () => {
   await Promise.all(
@@ -94,7 +96,7 @@ test("signs and verifies the actual packaged Hermes extension", async () => {
     packageDir,
     outputDir: path.join(root, "out"),
     baseUrl: "https://d1x7gb6wqsqmnm.cloudfront.net/tutti-agent-releases",
-    version: "1.0.5",
+    version: "1.0.6",
     signingKeyId: "tutti-hermes-release-v1",
     privateKey: keys.privateKey,
     publishedAt: "2026-07-17T00:00:00Z",
@@ -185,8 +187,8 @@ test("rejects unsupported manifest fields in both validators", async () => {
     manifest.runtime.shell = true;
   });
   const python = spawnSync(
-    "python3",
-    [
+    pythonCommand.executable,
+    [...pythonCommand.args,
       path.resolve(import.meta.dirname, "../../validate_agent_extension.py"),
       repositoryPackage
     ],
@@ -211,8 +213,8 @@ test("rejects unsupported profile fields in both validators", async () => {
 
   await assert.rejects(validatePackage(packageDir, "hermes"), /unsupported fields/u);
   const python = spawnSync(
-    "python3",
-    [
+    pythonCommand.executable,
+    [...pythonCommand.args,
       path.resolve(import.meta.dirname, "../../validate_agent_extension.py"),
       packageDir
     ],
@@ -358,8 +360,8 @@ async function repositoryFixture() {
 async function assertBothValidatorsReject(packageDir, pattern) {
   await assert.rejects(validatePackage(packageDir, "hermes"), pattern);
   const python = spawnSync(
-    "python3",
-    [
+    pythonCommand.executable,
+    [...pythonCommand.args,
       path.resolve(import.meta.dirname, "../../validate_agent_extension.py"),
       packageDir
     ],

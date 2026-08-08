@@ -5,7 +5,7 @@ const root = path.resolve(import.meta.dirname, '..');
 execFileSync(process.execPath, [path.join(root, 'scripts', 'package.mjs')], { stdio: 'inherit' });
 const packageDir = path.join(root, 'build', 'tutti-agent', 'package');
 const manifest = JSON.parse(await readFile(path.join(packageDir, 'tutti.agent.json'), 'utf8'));
-if (manifest.schemaVersion !== 'tutti.agent.manifest.v2' || manifest.agentKey !== 'hermes' || manifest.version !== '1.0.5') throw new Error('invalid manifest identity');
+if (manifest.schemaVersion !== 'tutti.agent.manifest.v2' || manifest.agentKey !== 'hermes' || manifest.version !== '1.0.6') throw new Error('invalid manifest identity');
 if (manifest.maskIcon !== undefined) throw new Error('Hermes must use its primary icon for conversation rows');
 const expectedInstall = ['tool', 'install', 'hermes-agent[acp]==0.18.2'];
 if (manifest.runtime?.kind !== 'standard-acp' || manifest.runtime.install?.runner !== 'uv' || JSON.stringify(manifest.runtime.install.args) !== JSON.stringify(expectedInstall)) throw new Error('Hermes runtime must use the pinned, isolated uv tool contract');
