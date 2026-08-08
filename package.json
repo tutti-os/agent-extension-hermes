@@ -7,7 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "check": "node scripts/check.mjs && python3 scripts/validate_agent_extension.py build/tutti-agent/package && node --test scripts/release/test/*.test.mjs",
+    "check": "node scripts/check.mjs && node scripts/run-python.mjs scripts/validate_agent_extension.py build/tutti-agent/package && node --test scripts/release/test/*.test.mjs",
     "package:tutti-agent": "node scripts/package.mjs"
   },
   "dependencies": {

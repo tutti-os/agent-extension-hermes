@@ -18,8 +18,10 @@ import test, { after } from "node:test";
 import { buildRelease } from "../lib/release.mjs";
 import { validatePackage } from "../lib/manifest.mjs";
 import { verifyRelease } from "../lib/verify.mjs";
+import { resolvePythonCommand } from "../../python-command.mjs";
 
 const temporaryRoots = new Set();
+const pythonCommand = resolvePythonCommand();
 
 after(async () => {
   await Promise.all(
@@ -185,8 +187,8 @@ test("rejects unsupported manifest fields in both validators", async () => {
     manifest.runtime.shell = true;
   });
   const python = spawnSync(
-    "python3",
-    [
+    pythonCommand.executable,
+    [...pythonCommand.args,
       path.resolve(import.meta.dirname, "../../validate_agent_extension.py"),
       repositoryPackage
     ],
@@ -211,8 +213,8 @@ test("rejects unsupported profile fields in both validators", async () => {
 
   await assert.rejects(validatePackage(packageDir, "hermes"), /unsupported fields/u);
   const python = spawnSync(
-    "python3",
-    [
+    pythonCommand.executable,
+    [...pythonCommand.args,
       path.resolve(import.meta.dirname, "../../validate_agent_extension.py"),
       packageDir
     ],
@@ -358,8 +360,8 @@ async function repositoryFixture() {
 async function assertBothValidatorsReject(packageDir, pattern) {
   await assert.rejects(validatePackage(packageDir, "hermes"), pattern);
   const python = spawnSync(
-    "python3",
-    [
+    pythonCommand.executable,
+    [...pythonCommand.args,
       path.resolve(import.meta.dirname, "../../validate_agent_extension.py"),
       packageDir
     ],

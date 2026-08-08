@@ -14,6 +14,13 @@ executable extension code.
 - User command publication: disabled so an existing `~/.local/bin/hermes`
   remains untouched
 
+The extension does not bundle `uv` or Python. Tutti Desktop supplies its
+version-pinned, checksum-verified `uv` archive to tuttid; tuttid extracts that
+tool into the host-managed shared tool cache and then performs the existing
+dynamic Python package install in the private Target runtime. This keeps the
+extension declarative and avoids
+duplicating a native toolchain in every agent package.
+
 The signed composer profile maps the ACP-advertised Hermes modes `default`,
 `accept_edits`, and `dont_ask` to Tutti `ask-before-write`, `accept-edits`, and
 `full-access`. It declares automatic approval only for the `full-access`
