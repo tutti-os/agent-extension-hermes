@@ -1,7 +1,7 @@
 {
   "schemaVersion": "tutti.agent.manifest.v2",
   "agentKey": "hermes",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "name": "Hermes Agent",
   "description": "Hermes Agent through the standard Agent Client Protocol",
   "icon": { "type": "asset", "src": "assets/icon.png" },

@@ -1,6 +1,6 @@
 {
   "name": "@tutti-os/agent-extension-hermes",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "private": true,
   "type": "module",
   "engines": {
