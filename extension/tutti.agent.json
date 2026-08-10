@@ -1,7 +1,7 @@
 {
   "schemaVersion": "tutti.agent.manifest.v2",
   "agentKey": "hermes",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "name": "Hermes Agent",
   "description": "Hermes Agent through the standard Agent Client Protocol",
   "icon": { "type": "asset", "src": "assets/icon.png" },
@@ -15,7 +15,7 @@
     "launch": {
       "executable": "${installRoot}/bin/hermes",
       "args": ["acp"],
-      "publishUserCommand": false
+      "publishUserCommand": true
     }
   },
   "profiles": {
