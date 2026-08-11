@@ -7,7 +7,7 @@ executable extension code.
 
 ## Runtime contract
 
-- PyPI requirement: `hermes-agent[acp]==0.18.2`
+- PyPI requirement: `hermes-agent[acp,mcp]==0.18.2`
 - Discovery: `hermes --version`
 - ACP launch: `hermes acp`
 - Managed install: isolated `uv tool install` under the Target runtime root
