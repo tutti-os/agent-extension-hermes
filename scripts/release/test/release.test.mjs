@@ -96,7 +96,7 @@ test("signs and verifies the actual packaged Hermes extension", async () => {
     packageDir,
     outputDir: path.join(root, "out"),
     baseUrl: "https://d1x7gb6wqsqmnm.cloudfront.net/tutti-agent-releases",
-    version: "1.0.8",
+    version: "1.0.9",
     signingKeyId: "tutti-hermes-release-v1",
     privateKey: keys.privateKey,
     publishedAt: "2026-07-17T00:00:00Z",
@@ -401,7 +401,7 @@ async function writeFixture(packageDir) {
           kind: "standard-acp",
           install: {
             runner: "uv",
-            args: ["tool", "install", "hermes-agent[acp]==0.18.2"]
+            args: ["tool", "install", "hermes-agent[acp]==0.19.0"]
           },
           launch: {
             executable: "${installRoot}/bin/hermes",
@@ -426,7 +426,7 @@ async function writeFixture(packageDir) {
         candidates: [
           {
             binaryNames: ["hermes"],
-            version: { args: ["--version"], constraint: ">=0.18.2 <0.19.0" },
+            version: { args: ["--version"], constraint: ">=0.19.0 <0.20.0" },
             launchArgs: ["acp"],
             probe: { kind: "acp-initialize", timeoutMs: 5000 }
           }
