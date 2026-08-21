@@ -1,7 +1,7 @@
 # Runtime verification
 
-The extension contract is pinned to `hermes-agent[acp,mcp]==0.18.2` and launches
-`hermes acp`. Compatibility is bounded to `>=0.18.2 <0.19.0`; discovery must
+The extension contract is pinned to `hermes-agent[acp,mcp]==0.19.0` and launches
+`hermes acp`. Compatibility is bounded to `>=0.19.0 <0.20.0`; discovery must
 complete a standard ACP initialize probe within 15 seconds. Successful managed
 activation publishes `~/.local/bin/hermes` through Tutti's stable user-command
 entry. Tutti refuses to replace a foreign command already present at that path.
@@ -11,7 +11,7 @@ entry. Tutti refuses to replace a foreign command already present at that path.
 Hermes installation on Windows has two dependency-resolution stages. The Tutti
 host first resolves its managed `uv` toolchain from the packaged archive,
 falling back to an official download only when that resource is absent. Then
-`uv tool install` resolves `hermes-agent[acp,mcp]==0.18.2` and Python dependencies
+`uv tool install` resolves `hermes-agent[acp,mcp]==0.19.0` and Python dependencies
 over the configured package index. The extension owns only the second-stage
 declaration.
 
@@ -21,7 +21,7 @@ For a packaged Windows acceptance run:
 2. Install the Hermes Target and confirm tuttid extracts the packaged,
    checksum-pinned `uv` archive without a request to GitHub.
 3. Allow the configured Python package index and confirm the Tutti Target
-   status/version probe reports a version in `>=0.18.2 <0.19.0`; open a new
+   status/version probe reports a version in `>=0.19.0 <0.20.0`; open a new
    terminal and confirm `hermes --version` resolves through `~/.local/bin`.
 4. Run the standard ACP `initialize` and `session/new` probe.
 
