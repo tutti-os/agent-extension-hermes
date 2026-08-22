@@ -26,10 +26,11 @@ The signed composer profile maps the ACP-advertised Hermes modes `default`,
 `full-access`. It declares automatic approval only for the `full-access`
 semantic tier. The daemon rejects automatic approval on less permissive tiers.
 
-The package declares Hermes-owned slash commands, browser-use support, and
-workspace/user Skill roots. Tutti injects its managed runtime Skills through
-the host runtime-preparation contract and passes all extension Skill roots to
-Hermes through `skills.external_dirs`.
+The package declares Hermes-owned slash commands, browser-use and computer-use
+support, and workspace/user Skill roots. Tutti injects both host-managed
+capability Skills through the runtime-preparation contract and passes all
+extension Skill roots to Hermes through `skills.external_dirs`. The host still
+fails closed when either capability backend is unavailable.
 
 ## Validation
 
