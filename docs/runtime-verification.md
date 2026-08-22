@@ -62,3 +62,13 @@ Local acceptance verification established:
 Permission changes are verified between turns. The runtime does not advertise
 permission-mode changes during an active turn, so callers must resolve a
 pending interaction before changing the mode.
+
+## Host-managed computer use
+
+Hermes consumes Tutti-managed Skills from the workspace
+`.agent_context/skills` root and from the session-local roots projected through
+`skills.external_dirs`. A compatible Tutti host may therefore materialize the
+`computer-use` Skill and advertise the `computerUse` capability when its
+computer driver and complete command surface are ready. The host remains the
+readiness authority: when the driver is unavailable, runtime preparation must
+omit both the Skill and the per-session capability marker.
