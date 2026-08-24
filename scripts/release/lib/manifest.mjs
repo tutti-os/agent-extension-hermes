@@ -14,6 +14,7 @@ export const profileSchemas = Object.freeze({
   tools: "tutti.agent.tools.v1",
   capabilities: "tutti.agent.capabilities.v1",
   composer: "tutti.agent.composer.v1",
+  accountUsage: "tutti.agent.account-usage-probe.v1",
   events: "tutti.agent.events.v1"
 });
 
@@ -472,6 +473,67 @@ function validateProfileShape(kind, profile) {
     );
     if (Object.values(profile.declared).some((value) => typeof value !== "boolean")) {
       throw new Error("capabilities.declared values must be booleans");
+    }
+    return;
+  }
+  if (kind === "accountUsage") {
+    rejectUnknownKeys(profile, ["schemaVersion", "runtime"], kind);
+    rejectObjectKeys(
+      profile.runtime,
+      ["package", "kind", "script", "args", "timeoutMs"],
+      "accountUsage.runtime"
+    );
+    const packageName = requireString(
+      profile.runtime.package,
+      "accountUsage.runtime.package"
+    );
+    if (
+      !/^@[a-z0-9._-]+\/[a-z0-9._-]+@[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/u.test(
+        packageName
+      )
+    ) {
+      throw new Error(
+        "accountUsage.runtime.package must use an exact scoped npm version"
+      );
+    }
+    if (profile.runtime.kind !== "node-script") {
+      throw new Error("accountUsage.runtime.kind must be node-script");
+    }
+    const script = requireString(
+      profile.runtime.script,
+      "accountUsage.runtime.script"
+    );
+    if (
+      !script.startsWith("${installRoot}/") ||
+      /[|;&`\n\r<>]|\$\(/u.test(script)
+    ) {
+      throw new Error(
+        "accountUsage.runtime.script must stay under installRoot"
+      );
+    }
+    validateStringArray(
+      profile.runtime.args,
+      "accountUsage.runtime.args",
+      true
+    );
+    if (
+      profile.runtime.args.length > 8 ||
+      profile.runtime.args.some(
+        (argument) =>
+          argument.length > 128 ||
+          /[\u0000-\u001f\u007f-\u009f]/u.test(argument)
+      )
+    ) {
+      throw new Error(
+        "accountUsage.runtime.args must contain 1..8 safe entries"
+      );
+    }
+    if (
+      !Number.isInteger(profile.runtime.timeoutMs) ||
+      profile.runtime.timeoutMs < 100 ||
+      profile.runtime.timeoutMs > 30_000
+    ) {
+      throw new Error("accountUsage.runtime.timeoutMs must be 100..30000");
     }
     return;
   }
