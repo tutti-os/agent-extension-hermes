@@ -7,7 +7,7 @@ executable extension code.
 
 ## Runtime contract
 
-- PyPI requirement: `hermes-agent[acp,mcp]==0.18.2`
+- PyPI requirement: `hermes-agent[acp,mcp]==0.19.0`
 - Discovery: `hermes --version`
 - ACP launch: `hermes acp`
 - Managed install: isolated `uv tool install` under the Target runtime root
@@ -26,10 +26,11 @@ The signed composer profile maps the ACP-advertised Hermes modes `default`,
 `full-access`. It declares automatic approval only for the `full-access`
 semantic tier. The daemon rejects automatic approval on less permissive tiers.
 
-The package declares Hermes-owned slash commands, browser-use support, and
-workspace/user Skill roots. Tutti injects its managed runtime Skills through
-the host runtime-preparation contract and passes all extension Skill roots to
-Hermes through `skills.external_dirs`.
+The package declares Hermes-owned slash commands, browser-use and computer-use
+support, and workspace/user Skill roots. Tutti injects both host-managed
+capability Skills through the runtime-preparation contract and passes all
+extension Skill roots to Hermes through `skills.external_dirs`. The host still
+fails closed when either capability backend is unavailable.
 
 ## Validation
 

@@ -10,6 +10,7 @@
     "modelSelection": false,
     "commands": true,
     "browserUse": true,
+    "computerUse": true,
     "skills": true
   }
 }
