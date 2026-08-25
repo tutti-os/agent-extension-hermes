@@ -434,6 +434,7 @@ def validate_runtime_prep(value: Any) -> None:
             "sourceEnvVar",
             "sourceDefaultRel",
             "copyFiles",
+            "sharedDirs",
             "configFile",
             "configFormat",
             "externalDirsKey",
@@ -460,10 +461,30 @@ def validate_runtime_prep(value: Any) -> None:
         require_safe_relative_path(
             file, f"composer.runtimePrep.home.copyFiles[{index}]"
         )
+    shared_dirs = home.get("sharedDirs", [])
+    if not isinstance(shared_dirs, list):
+        raise ValidationError("composer.runtimePrep.home.sharedDirs must be an array")
+    normalized_shared_dirs: list[PurePosixPath] = []
+    for index, directory in enumerate(shared_dirs):
+        normalized = PurePosixPath(require_safe_relative_path(
+            directory, f"composer.runtimePrep.home.sharedDirs[{index}]"
+        ))
+        for existing in normalized_shared_dirs:
+            if _runtime_paths_overlap(existing, normalized):
+                raise ValidationError("composer.runtimePrep.home.sharedDirs must not overlap")
+        normalized_shared_dirs.append(normalized)
     if "configFile" in home:
         require_safe_relative_path(
             home.get("configFile"), "composer.runtimePrep.home.configFile"
         )
+    copied_paths = [PurePosixPath(path) for path in copy_files]
+    if home.get("configFile") is not None:
+        copied_paths.append(PurePosixPath(home["configFile"]))
+    for directory in normalized_shared_dirs:
+        if any(_runtime_paths_overlap(directory, copied) for copied in copied_paths):
+            raise ValidationError(
+                "composer.runtimePrep.home.sharedDirs must not overlap copied files"
+            )
     if home.get("configFormat") not in {None, "yaml"}:
         raise ValidationError("composer.runtimePrep.home.configFormat is unsupported")
     external_dirs_key = home.get("externalDirsKey")
@@ -476,6 +497,13 @@ def validate_runtime_prep(value: Any) -> None:
     for key in ("includeSkillRoots", "includeUserHomeDir"):
         if key in home and not isinstance(home.get(key), bool):
             raise ValidationError(f"composer.runtimePrep.home.{key} must be a boolean")
+
+
+def _runtime_paths_overlap(left: PurePosixPath, right: PurePosixPath) -> bool:
+    left_parts = left.parts
+    right_parts = right.parts
+    common = min(len(left_parts), len(right_parts))
+    return left_parts[:common] == right_parts[:common]
 
 
 def validate_composer_profile(profile: dict[str, Any]) -> bool:

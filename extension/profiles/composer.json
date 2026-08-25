@@ -42,6 +42,7 @@
       "sourceEnvVar": "HERMES_HOME",
       "sourceDefaultRel": ".hermes",
       "copyFiles": ["config.yaml", "auth.json", ".env"],
+      "sharedDirs": ["bin"],
       "configFile": "config.yaml",
       "configFormat": "yaml",
       "externalDirsKey": ["skills", "external_dirs"],

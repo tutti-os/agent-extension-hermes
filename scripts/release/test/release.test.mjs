@@ -96,7 +96,7 @@ test("signs and verifies the actual packaged Hermes extension", async () => {
     packageDir,
     outputDir: path.join(root, "out"),
     baseUrl: "https://d1x7gb6wqsqmnm.cloudfront.net/tutti-agent-releases",
-    version: "1.0.10",
+    version: "1.0.11",
     signingKeyId: "tutti-hermes-release-v1",
     privateKey: keys.privateKey,
     publishedAt: "2026-07-17T00:00:00Z",
@@ -254,6 +254,23 @@ test("both validators enforce discovery and safe Skill roots", async () => {
   discovery.candidates[0].probe.timeoutMs = 5000;
   await writeFile(discoveryPath, `${JSON.stringify(discovery, null, 2)}\n`);
   await assertBothValidatorsReject(packageDir, /safe relative POSIX path/u);
+});
+
+test("both validators reject unsafe or conflicting shared runtime directories", async () => {
+  const packageDir = await repositoryFixture();
+  const composerPath = path.join(packageDir, "profiles", "composer.json");
+  const composer = JSON.parse(await readFile(composerPath, "utf8"));
+  composer.runtimePrep.home.sharedDirs = ["../bin"];
+  await writeFile(composerPath, `${JSON.stringify(composer, null, 2)}\n`);
+  await assertBothValidatorsReject(packageDir, /safe relative POSIX path/u);
+
+  composer.runtimePrep.home.sharedDirs = ["bin", "bin/cache"];
+  await writeFile(composerPath, `${JSON.stringify(composer, null, 2)}\n`);
+  await assertBothValidatorsReject(packageDir, /must not overlap/u);
+
+  composer.runtimePrep.home.sharedDirs = ["config.yaml"];
+  await writeFile(composerPath, `${JSON.stringify(composer, null, 2)}\n`);
+  await assertBothValidatorsReject(packageDir, /must not overlap copied files/u);
 });
 
 test("rejects files not declared by the manifest", async () => {

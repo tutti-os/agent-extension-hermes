@@ -732,6 +732,7 @@ function validateRuntimePrep(runtimePrep) {
       "sourceEnvVar",
       "sourceDefaultRel",
       "copyFiles",
+      "sharedDirs",
       "configFile",
       "configFormat",
       "externalDirsKey",
@@ -762,11 +763,36 @@ function validateRuntimePrep(runtimePrep) {
   for (const [index, file] of copyFiles.entries()) {
     requireSafeRelativePath(file, `composer.runtimePrep.home.copyFiles[${index}]`);
   }
+  const sharedDirs = runtimePrep.home.sharedDirs ?? [];
+  if (!Array.isArray(sharedDirs)) {
+    throw new Error("composer.runtimePrep.home.sharedDirs must be an array");
+  }
+  const normalizedSharedDirs = [];
+  for (const [index, directory] of sharedDirs.entries()) {
+    const normalized = path.posix.normalize(
+      requireSafeRelativePath(directory, `composer.runtimePrep.home.sharedDirs[${index}]`)
+    );
+    if (normalizedSharedDirs.some((existing) => runtimePathsOverlap(existing, normalized))) {
+      throw new Error("composer.runtimePrep.home.sharedDirs must not overlap");
+    }
+    normalizedSharedDirs.push(normalized);
+  }
   if (runtimePrep.home.configFile !== undefined) {
     requireSafeRelativePath(
       runtimePrep.home.configFile,
       "composer.runtimePrep.home.configFile"
     );
+  }
+  const copiedPaths = [...copyFiles];
+  if (runtimePrep.home.configFile !== undefined) {
+    copiedPaths.push(runtimePrep.home.configFile);
+  }
+  if (
+    normalizedSharedDirs.some((directory) =>
+      copiedPaths.some((copied) => runtimePathsOverlap(directory, path.posix.normalize(copied)))
+    )
+  ) {
+    throw new Error("composer.runtimePrep.home.sharedDirs must not overlap copied files");
   }
   if (
     runtimePrep.home.configFormat !== undefined &&
@@ -794,6 +820,13 @@ function validateRuntimePrep(runtimePrep) {
       throw new Error(`composer.runtimePrep.home.${key} must be a boolean`);
     }
   }
+}
+
+function runtimePathsOverlap(left, right) {
+  const leftParts = left.split("/");
+  const rightParts = right.split("/");
+  const common = Math.min(leftParts.length, rightParts.length);
+  return leftParts.slice(0, common).join("/") === rightParts.slice(0, common).join("/");
 }
 
 function validateProfileAgreement(profiles) {
