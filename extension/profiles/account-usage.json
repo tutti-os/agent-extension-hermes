@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "tutti.agent.account-usage-probe.v1",
+  "runtime": {
+    "package": "@tutti-os/hermes-account-usage-probe@0.1.0",
+    "kind": "node-script",
+    "script": "${installRoot}/node_modules/@tutti-os/hermes-account-usage-probe/dist/cli.cjs",
+    "args": ["--output", "json"],
+    "timeoutMs": 30000,
+    "install": {
+      "runner": "npm",
+      "args": ["install", "--prefix", "${installRoot}", "@tutti-os/hermes-account-usage-probe@0.1.0"]
+    }
+  }
+}

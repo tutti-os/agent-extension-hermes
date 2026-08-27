@@ -5,7 +5,7 @@ const root = path.resolve(import.meta.dirname, '..');
 execFileSync(process.execPath, [path.join(root, 'scripts', 'package.mjs')], { stdio: 'inherit' });
 const packageDir = path.join(root, 'build', 'tutti-agent', 'package');
 const manifest = JSON.parse(await readFile(path.join(packageDir, 'tutti.agent.json'), 'utf8'));
-if (manifest.schemaVersion !== 'tutti.agent.manifest.v2' || manifest.agentKey !== 'hermes' || manifest.version !== '1.0.10') throw new Error('invalid manifest identity');
+if (manifest.schemaVersion !== 'tutti.agent.manifest.v2' || manifest.agentKey !== 'hermes' || manifest.version !== '1.0.11') throw new Error('invalid manifest identity');
 if (manifest.maskIcon !== undefined) throw new Error('Hermes must use its primary icon for conversation rows');
 const expectedInstall = ['tool', 'install', 'hermes-agent[acp,mcp]==0.19.0'];
 if (manifest.runtime?.kind !== 'standard-acp' || manifest.runtime.install?.runner !== 'uv' || JSON.stringify(manifest.runtime.install.args) !== JSON.stringify(expectedInstall)) throw new Error('Hermes runtime must use the pinned, isolated uv tool contract');
@@ -29,7 +29,7 @@ const expectedSlashCommands = { commandCatalogAuthoritative: true, commands: [{ 
 if (JSON.stringify(composer.slashCommands) !== JSON.stringify(expectedSlashCommands)) throw new Error('Hermes signed slash command policy changed');
 const expectedSkills = { invocation: 'textTrigger', triggerPrefix: '/', roots: [{ scope: 'workspace', path: '.agent_context/skills' }, { scope: 'user', path: '.agent_context/skills' }, { scope: 'user', path: '.hermes/skills' }] };
 if (JSON.stringify(composer.skills) !== JSON.stringify(expectedSkills)) throw new Error('Hermes Skill roots changed');
-const expectedRuntimePrep = { instructionsFile: 'AGENTS.md', home: { envVar: 'HERMES_HOME', dirName: 'hermes', sourceEnvVar: 'HERMES_HOME', sourceDefaultRel: '.hermes', copyFiles: ['config.yaml', 'auth.json', '.env'], configFile: 'config.yaml', configFormat: 'yaml', externalDirsKey: ['skills', 'external_dirs'], userHomeSkillDir: 'skills', includeSkillRoots: true, includeUserHomeDir: true } };
+const expectedRuntimePrep = { instructionsFile: 'AGENTS.md', home: { envVar: 'HERMES_HOME', dirName: 'hermes', sourceEnvVar: 'HERMES_HOME', sourceDefaultRel: '.hermes', copyFiles: ['config.yaml', 'auth.json', '.env'], sharedDirs: ['bin'], configFile: 'config.yaml', configFormat: 'yaml', externalDirsKey: ['skills', 'external_dirs'], userHomeSkillDir: 'skills', includeSkillRoots: true, includeUserHomeDir: true } };
 if (JSON.stringify(composer.runtimePrep) !== JSON.stringify(expectedRuntimePrep)) throw new Error('Hermes runtimePrep overlay changed');
 const tools = JSON.parse(await readFile(path.join(packageDir, manifest.profiles.tools), 'utf8'));
 if (tools.tools?.length !== 0) throw new Error('Hermes tools must remain generic');

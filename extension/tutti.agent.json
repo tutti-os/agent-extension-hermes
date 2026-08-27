@@ -1,7 +1,7 @@
 {
   "schemaVersion": "tutti.agent.manifest.v2",
   "agentKey": "hermes",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "name": "Hermes Agent",
   "description": "Hermes Agent through the standard Agent Client Protocol",
   "icon": { "type": "asset", "src": "assets/icon.png" },
@@ -22,7 +22,8 @@
     "discovery": "profiles/discovery.json",
     "tools": "profiles/tools.json",
     "capabilities": "profiles/capabilities.json",
-    "composer": "profiles/composer.json"
+    "composer": "profiles/composer.json",
+    "accountUsage": "profiles/account-usage.json"
   },
   "localizationInfo": {
     "defaultLocale": "en",

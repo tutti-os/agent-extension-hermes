@@ -32,6 +32,14 @@ capability Skills through the runtime-preparation contract and passes all
 extension Skill roots to Hermes through `skills.external_dirs`. The host still
 fails closed when either capability backend is unavailable.
 
+Hermes also installs its optional Tirith command scanner under
+`$HERMES_HOME/bin` on supported macOS/Linux targets. The signed runtime profile
+declares `bin` as a shared mutable directory, allowing Tutti to keep all other
+Hermes state session-isolated while reusing the verified helper across fresh
+sessions. This remains declarative; neither the extension nor Tutti hardcodes a
+Tirith version or download URL. Hermes currently skips Tirith on Windows because
+upstream does not publish a Windows build.
+
 ## Validation
 
 ```sh

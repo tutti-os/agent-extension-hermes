@@ -14,7 +14,8 @@ export const profileSchemas = Object.freeze({
   tools: "tutti.agent.tools.v1",
   capabilities: "tutti.agent.capabilities.v1",
   composer: "tutti.agent.composer.v1",
-  events: "tutti.agent.events.v1"
+  events: "tutti.agent.events.v1",
+  accountUsage: "tutti.agent.account-usage-probe.v1"
 });
 
 const allowedPackageExtensions = new Set([
@@ -561,6 +562,110 @@ function validateProfileShape(kind, profile) {
   if (kind === "events") {
     rejectUnknownKeys(profile, ["schemaVersion", "events"], kind);
   }
+  if (kind === "accountUsage") {
+    rejectUnknownKeys(profile, ["schemaVersion", "runtime"], kind);
+    const runtime = profile.runtime;
+    rejectUnknownKeys(
+      runtime,
+      ["package", "kind", "script", "args", "timeoutMs", "install"],
+      "accountUsage.runtime"
+    );
+    const packageName = requireString(
+      runtime.package,
+      "accountUsage.runtime.package"
+    );
+    if (
+      !/^@[a-z0-9._-]+\/[a-z0-9._-]+@[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/u.test(
+        packageName
+      )
+    ) {
+      throw new Error(
+        "accountUsage.runtime.package must use an exact scoped npm version"
+      );
+    }
+    if (runtime.kind !== "node-script") {
+      throw new Error("accountUsage.runtime.kind must be node-script");
+    }
+    const script = requireString(
+      runtime.script,
+      "accountUsage.runtime.script"
+    );
+    if (
+      !script.startsWith("${installRoot}/") ||
+      /[|;&`\n\r<>]|\$\(/u.test(script)
+    ) {
+      throw new Error("accountUsage.runtime.script must stay under installRoot");
+    }
+    validateStringArray(runtime.args, "accountUsage.runtime.args", true);
+    if (
+      runtime.args.length > 8 ||
+      runtime.args.some((argument) => containsControlCharacter(argument))
+    ) {
+      throw new Error("accountUsage.runtime.args must contain 1..8 safe entries");
+    }
+    if (
+      !Number.isInteger(runtime.timeoutMs) ||
+      runtime.timeoutMs < 100 ||
+      runtime.timeoutMs > 30_000
+    ) {
+      throw new Error("accountUsage.runtime.timeoutMs must be 100..30000");
+    }
+    validateAccountUsageInstall(runtime.install, packageName);
+    return;
+  }
+}
+
+const accountUsageInstallPlaceholders = new Set([
+  "${installRoot}",
+  "${platform}"
+]);
+
+function validateAccountUsageInstall(install, packageName) {
+  if (install === undefined) return;
+  rejectUnknownKeys(install, ["runner", "args"], "accountUsage.runtime.install");
+  const runner = requireString(
+    install.runner,
+    "accountUsage.runtime.install.runner"
+  );
+  if (runner !== "npm" && runner !== "pnpm") {
+    throw new Error("accountUsage.runtime.install.runner must be npm or pnpm");
+  }
+  validateStringArray(install.args, "accountUsage.runtime.install.args", true);
+  if (install.args.length > 8) {
+    throw new Error(
+      "accountUsage.runtime.install.args must contain 1..8 entries"
+    );
+  }
+  if (!install.args.includes(packageName)) {
+    throw new Error(
+      "accountUsage.runtime.install.args must name the companion package"
+    );
+  }
+  for (const [index, argument] of install.args.entries()) {
+    if (containsControlCharacter(argument)) {
+      throw new Error(
+        `accountUsage.runtime.install.args[${index}] is invalid`
+      );
+    }
+    for (const match of argument.matchAll(/\$\{[^}]+\}/gu)) {
+      if (!accountUsageInstallPlaceholders.has(match[0])) {
+        throw new Error(
+          `accountUsage.runtime.install.args[${index}] contains unsupported placeholder ${match[0]}`
+        );
+      }
+    }
+  }
+}
+
+function containsControlCharacter(value) {
+  if (typeof value !== "string") return false;
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code < 32 || code === 127) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function validateSlashCommands(slashCommands) {
@@ -627,6 +732,7 @@ function validateRuntimePrep(runtimePrep) {
       "sourceEnvVar",
       "sourceDefaultRel",
       "copyFiles",
+      "sharedDirs",
       "configFile",
       "configFormat",
       "externalDirsKey",
@@ -657,11 +763,36 @@ function validateRuntimePrep(runtimePrep) {
   for (const [index, file] of copyFiles.entries()) {
     requireSafeRelativePath(file, `composer.runtimePrep.home.copyFiles[${index}]`);
   }
+  const sharedDirs = runtimePrep.home.sharedDirs ?? [];
+  if (!Array.isArray(sharedDirs)) {
+    throw new Error("composer.runtimePrep.home.sharedDirs must be an array");
+  }
+  const normalizedSharedDirs = [];
+  for (const [index, directory] of sharedDirs.entries()) {
+    const normalized = path.posix.normalize(
+      requireSafeRelativePath(directory, `composer.runtimePrep.home.sharedDirs[${index}]`)
+    );
+    if (normalizedSharedDirs.some((existing) => runtimePathsOverlap(existing, normalized))) {
+      throw new Error("composer.runtimePrep.home.sharedDirs must not overlap");
+    }
+    normalizedSharedDirs.push(normalized);
+  }
   if (runtimePrep.home.configFile !== undefined) {
     requireSafeRelativePath(
       runtimePrep.home.configFile,
       "composer.runtimePrep.home.configFile"
     );
+  }
+  const copiedPaths = [...copyFiles];
+  if (runtimePrep.home.configFile !== undefined) {
+    copiedPaths.push(runtimePrep.home.configFile);
+  }
+  if (
+    normalizedSharedDirs.some((directory) =>
+      copiedPaths.some((copied) => runtimePathsOverlap(directory, path.posix.normalize(copied)))
+    )
+  ) {
+    throw new Error("composer.runtimePrep.home.sharedDirs must not overlap copied files");
   }
   if (
     runtimePrep.home.configFormat !== undefined &&
@@ -689,6 +820,13 @@ function validateRuntimePrep(runtimePrep) {
       throw new Error(`composer.runtimePrep.home.${key} must be a boolean`);
     }
   }
+}
+
+function runtimePathsOverlap(left, right) {
+  const leftParts = left.split("/");
+  const rightParts = right.split("/");
+  const common = Math.min(leftParts.length, rightParts.length);
+  return leftParts.slice(0, common).join("/") === rightParts.slice(0, common).join("/");
 }
 
 function validateProfileAgreement(profiles) {

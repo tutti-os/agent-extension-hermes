@@ -8,7 +8,7 @@ on:
         required: true
         default: "1.0.0"
       min_tutti_version:
-        description: Oldest verified Tutti version that accepts this package contract
+        description: First released Tutti version that reads the account-usage-v1 Hermes index
         required: true
         default: "0.0.0"
       withdraw_versions:
@@ -23,6 +23,7 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   AGENT_KEY: hermes
+  AGENT_METADATA_PATH: agents/hermes/account-usage-v1
   MIN_TUTTI_VERSION: ${{ inputs.min_tutti_version }}
   SIGNING_KEY_ID: tutti-hermes-release-v1
   S3_PREFIX: tutti-agent-releases
@@ -55,6 +56,15 @@ jobs:
 
       - name: Run repository checks
         run: pnpm check
+
+      - name: Verify account usage helper is published
+        run: |
+          package_spec="$(node --input-type=module -e '
+            import fs from "node:fs";
+            const profile = JSON.parse(fs.readFileSync("extension/profiles/account-usage.json", "utf8"));
+            process.stdout.write(profile.runtime.package);
+          ')"
+          npm view "${package_spec}" version --json >/dev/null
 
       - name: Build extension package
         env:
@@ -131,8 +141,9 @@ jobs:
           set -euo pipefail
           root="dist/tutti-agent-extension-release/agents/${AGENT_KEY}"
           release_file="${root}/${VERSION}/release.json"
-          versions_key="${S3_PREFIX:+${S3_PREFIX}/}agents/${AGENT_KEY}/versions.json"
-          latest_key="${S3_PREFIX:+${S3_PREFIX}/}agents/${AGENT_KEY}/latest.json"
+          metadata_prefix="${S3_PREFIX:+${S3_PREFIX}/}${AGENT_METADATA_PATH}"
+          versions_key="${metadata_prefix}/versions.json"
+          latest_key="${metadata_prefix}/latest.json"
           for attempt in 1 2 3 4 5; do
             rm -f /tmp/existing-versions.json
             etag=""
@@ -195,7 +206,7 @@ jobs:
         run: |
           invalidation_id="$(aws cloudfront create-invalidation \
             --distribution-id "${DISTRIBUTION_ID}" \
-            --paths "/${S3_PREFIX:+${S3_PREFIX}/}agents/${AGENT_KEY}/latest.json" "/${S3_PREFIX:+${S3_PREFIX}/}agents/${AGENT_KEY}/versions.json" \
+            --paths "/${S3_PREFIX:+${S3_PREFIX}/}${AGENT_METADATA_PATH}/latest.json" "/${S3_PREFIX:+${S3_PREFIX}/}${AGENT_METADATA_PATH}/versions.json" \
             --query 'Invalidation.Id' \
             --output text)"
           aws cloudfront wait invalidation-completed \
@@ -207,14 +218,15 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          public_root="${RELEASE_ASSETS_BASE_URL}/agents/${AGENT_KEY}"
+          public_metadata_root="${RELEASE_ASSETS_BASE_URL}/${AGENT_METADATA_PATH}"
+          public_release_root="${RELEASE_ASSETS_BASE_URL}/agents/${AGENT_KEY}"
           verify_root="${RUNNER_TEMP}/hermes-public-release"
           mkdir -p "${verify_root}"
           for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if curl -fsS "${public_root}/versions.json" -o "${verify_root}/versions.json" && \
-              curl -fsS "${public_root}/latest.json" -o "${verify_root}/latest.json" && \
-              curl -fsS "${public_root}/${VERSION}/release.json" -o "${verify_root}/release.json" && \
-              curl -fsS "${public_root}/${VERSION}/${AGENT_KEY}-${VERSION}.zip" -o "${verify_root}/${AGENT_KEY}-${VERSION}.zip" && \
+            if curl -fsS "${public_metadata_root}/versions.json" -o "${verify_root}/versions.json" && \
+              curl -fsS "${public_metadata_root}/latest.json" -o "${verify_root}/latest.json" && \
+              curl -fsS "${public_release_root}/${VERSION}/release.json" -o "${verify_root}/release.json" && \
+              curl -fsS "${public_release_root}/${VERSION}/${AGENT_KEY}-${VERSION}.zip" -o "${verify_root}/${AGENT_KEY}-${VERSION}.zip" && \
               node --input-type=module -e '
                 import fs from "node:fs";
                 import { validateVersions } from "./scripts/release/lib/versions.mjs";
