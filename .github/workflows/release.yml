@@ -50,6 +50,7 @@ jobs:
         with:
           node-version: "24"
           cache: pnpm
+          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -57,14 +58,25 @@ jobs:
       - name: Run repository checks
         run: pnpm check
 
-      - name: Verify account usage helper is published
+      - name: Publish account usage helper if needed
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           package_spec="$(node --input-type=module -e '
             import fs from "node:fs";
             const profile = JSON.parse(fs.readFileSync("extension/profiles/account-usage.json", "utf8"));
             process.stdout.write(profile.runtime.package);
           ')"
-          npm view "${package_spec}" version --json >/dev/null
+          package_name="${package_spec%@*}"
+          expected_version="${package_spec##*@}"
+          if published_version="$(npm view "${package_spec}" version 2>/dev/null)"; then
+            test "${published_version}" = "${expected_version}"
+            echo "${package_spec} is already published."
+          else
+            pnpm --filter "${package_name}" publish --access public --no-git-checks --provenance
+            published_version="$(npm view "${package_spec}" version)"
+            test "${published_version}" = "${expected_version}"
+          fi
 
       - name: Build extension package
         env:
