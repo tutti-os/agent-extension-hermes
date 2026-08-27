@@ -73,9 +73,19 @@ jobs:
             test "${published_version}" = "${expected_version}"
             echo "${package_spec} is already published."
           else
+            set +e
             pnpm --filter "${package_name}" publish --access public --no-git-checks --provenance
-            published_version="$(npm view "${package_spec}" version)"
-            test "${published_version}" = "${expected_version}"
+            publish_status="$?"
+            set -e
+            for attempt in $(seq 1 30); do
+              if published_version="$(npm view "${package_spec}" version 2>/dev/null)"; then
+                test "${published_version}" = "${expected_version}"
+                exit 0
+              fi
+              sleep 10
+            done
+            echo "${package_spec} did not become readable after publication (publish status ${publish_status})." >&2
+            exit 1
           fi
 
       - name: Build extension package
